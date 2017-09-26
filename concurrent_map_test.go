@@ -8,7 +8,7 @@ import (
 )
 
 type Animal struct {
-	id int64
+	id KeyType
 }
 
 func TestMapCreation(t *testing.T) {
@@ -24,11 +24,11 @@ func TestMapCreation(t *testing.T) {
 
 func TestInsert(t *testing.T) {
 	m := New()
-	elephant := Animal{111}
-	monkey := Animal{222}
+	elephant := Animal{Int64Key(111)}
+	monkey := Animal{Int64Key(222)}
 
-	m.Set(111, elephant)
-	m.Set(222, monkey)
+	m.Set(Int64Key(111), elephant)
+	m.Set(Int64Key(222), monkey)
 
 	if m.Count() != 2 {
 		t.Error("map should contain exactly two elements.")
@@ -37,11 +37,11 @@ func TestInsert(t *testing.T) {
 
 func TestInsertAbsent(t *testing.T) {
 	m := New()
-	elephant := Animal{111}
-	monkey := Animal{222}
+	elephant := Animal{Int64Key(111)}
+	monkey := Animal{Int64Key(222)}
 
-	m.SetIfAbsent(111, elephant)
-	if ok := m.SetIfAbsent(111, monkey); ok {
+	m.SetIfAbsent(Int64Key(111), elephant)
+	if ok := m.SetIfAbsent(Int64Key(111), monkey); ok {
 		t.Error("map set a new value even the entry is already present")
 	}
 }
@@ -50,7 +50,7 @@ func TestGet(t *testing.T) {
 	m := New()
 
 	// Get a missing element.
-	val, ok := m.Get(333)
+	val, ok := m.Get(Int64Key(333))
 
 	if ok == true {
 		t.Error("ok should be false when item is missing from map.")
@@ -60,12 +60,12 @@ func TestGet(t *testing.T) {
 		t.Error("Missing values should return as null.")
 	}
 
-	elephant := Animal{111}
-	m.Set(111, elephant)
+	elephant := Animal{Int64Key(111)}
+	m.Set(Int64Key(Int64Key(111)), elephant)
 
 	// Retrieve inserted element.
 
-	tmp, ok := m.Get(111)
+	tmp, ok := m.Get(Int64Key(111))
 	elephant = tmp.(Animal) // Type assertion.
 
 	if ok == false {
@@ -76,7 +76,7 @@ func TestGet(t *testing.T) {
 		t.Error("expecting an element, not null.")
 	}
 
-	if elephant.id != 111 {
+	if elephant.id != Int64Key(111) {
 		t.Error("item was modified.")
 	}
 }
@@ -85,7 +85,7 @@ func TestMustGet(t *testing.T) {
 	m := New()
 
 	// Get a missing element, but return an error.
-	val, err := m.MustGet(111, func(id int64) (interface{}, error) {
+	val, err := m.MustGet(Int64Key(111), func(id KeyType) (interface{}, error) {
 		return Animal{id}, errors.New("error")
 	})
 	if err == nil {
@@ -96,7 +96,7 @@ func TestMustGet(t *testing.T) {
 	}
 
 	// Get a missing element.
-	val, err = m.MustGet(111, func(id int64) (interface{}, error) {
+	val, err = m.MustGet(Int64Key(111), func(id KeyType) (interface{}, error) {
 		return Animal{id}, nil
 	})
 	elephant := val.(Animal) // Type assertion.
@@ -106,7 +106,7 @@ func TestMustGet(t *testing.T) {
 	if &elephant == nil {
 		t.Error("expecting an element, not null.")
 	}
-	if elephant.id != 111 {
+	if elephant.id != Int64Key(111) {
 		t.Error("item was modified.")
 	}
 }
@@ -115,14 +115,14 @@ func TestHas(t *testing.T) {
 	m := New()
 
 	// Get a missing element.
-	if m.Has(333) == true {
+	if m.Has(Int64Key(333)) == true {
 		t.Error("element shouldn't exists")
 	}
 
-	elephant := Animal{111}
-	m.Set(111, elephant)
+	elephant := Animal{Int64Key(111)}
+	m.Set(Int64Key(111), elephant)
 
-	if m.Has(111) == false {
+	if m.Has(Int64Key(111)) == false {
 		t.Error("element exists, expecting Has to return True.")
 	}
 }
@@ -130,16 +130,16 @@ func TestHas(t *testing.T) {
 func TestRemove(t *testing.T) {
 	m := New()
 
-	monkey := Animal{222}
-	m.Set(222, monkey)
+	monkey := Animal{Int64Key(222)}
+	m.Set(Int64Key(222), monkey)
 
-	m.Remove(222)
+	m.Remove(Int64Key(222))
 
 	if m.Count() != 0 {
 		t.Error("Expecting count to be zero once item was removed.")
 	}
 
-	temp, ok := m.Get(222)
+	temp, ok := m.Get(Int64Key(222))
 
 	if ok != false {
 		t.Error("Expecting ok to be false for missing items.")
@@ -150,16 +150,16 @@ func TestRemove(t *testing.T) {
 	}
 
 	// Remove a none existing element.
-	m.Remove(10001)
+	m.Remove(Int64Key(10001))
 }
 
 func TestPop(t *testing.T) {
 	m := New()
 
-	monkey := Animal{222}
-	m.Set(222, monkey)
+	monkey := Animal{Int64Key(222)}
+	m.Set(Int64Key(222), monkey)
 
-	v, exists := m.Pop(222)
+	v, exists := m.Pop(Int64Key(222))
 
 	if !exists {
 		t.Error("Pop didn't find a monkey.")
@@ -171,7 +171,7 @@ func TestPop(t *testing.T) {
 		t.Error("Pop found something else, but monkey.")
 	}
 
-	v2, exists2 := m.Pop(222)
+	v2, exists2 := m.Pop(Int64Key(222))
 	m1, ok = v2.(Animal)
 
 	if exists2 || ok || m1 == monkey {
@@ -182,7 +182,7 @@ func TestPop(t *testing.T) {
 		t.Error("Expecting count to be zero once item was Pop'ed.")
 	}
 
-	temp, ok := m.Get(222)
+	temp, ok := m.Get(Int64Key(222))
 
 	if ok != false {
 		t.Error("Expecting ok to be false for missing items.")
@@ -196,7 +196,7 @@ func TestPop(t *testing.T) {
 func TestCount(t *testing.T) {
 	m := New()
 	for i := 0; i < 100; i++ {
-		id := int64(i)
+		id := Int64Key(i)
 		m.Set(id, Animal{id})
 	}
 
@@ -212,7 +212,7 @@ func TestIsEmpty(t *testing.T) {
 		t.Error("new map should be empty")
 	}
 
-	m.Set(111, Animal{111})
+	m.Set(Int64Key(111), Animal{Int64Key(111)})
 
 	if m.IsEmpty() != false {
 		t.Error("map shouldn't be empty.")
@@ -224,7 +224,7 @@ func TestIterator(t *testing.T) {
 
 	// Insert 100 elements.
 	for i := 0; i < 100; i++ {
-		id := int64(i)
+		id := Int64Key(i)
 		m.Set(id, Animal{id})
 	}
 
@@ -249,7 +249,7 @@ func TestBufferedIterator(t *testing.T) {
 
 	// Insert 100 elements.
 	for i := 0; i < 100; i++ {
-		id := int64(i)
+		id := Int64Key(i)
 		m.Set(id, Animal{id})
 	}
 
@@ -274,13 +274,13 @@ func TestIterCb(t *testing.T) {
 
 	// Insert 100 elements.
 	for i := 0; i < 100; i++ {
-		id := int64(i)
+		id := Int64Key(i)
 		m.Set(id, Animal{id})
 	}
 
 	counter := 0
 	// Iterate over elements.
-	m.IterCb(func(key int64, v interface{}) {
+	m.IterCb(func(key KeyType, v interface{}) {
 		_, ok := v.(Animal)
 		if !ok {
 			t.Error("Expecting an animal object")
@@ -298,7 +298,7 @@ func TestItems(t *testing.T) {
 
 	// Insert 100 elements.
 	for i := 0; i < 100; i++ {
-		id := int64(i)
+		id := Int64Key(i)
 		m.Set(id, Animal{id})
 	}
 
@@ -318,7 +318,7 @@ func TestConcurrent(t *testing.T) {
 	// Using go routines insert 1000 ints into our map.
 	go func() {
 		for i := 0; i < iterations/2; i++ {
-			id := int64(i)
+			id := Int64Key(i)
 			// Add item to map.
 			m.Set(id, i)
 
@@ -332,7 +332,7 @@ func TestConcurrent(t *testing.T) {
 
 	go func() {
 		for i := iterations / 2; i < iterations; i++ {
-			id := int64(i)
+			id := Int64Key(i)
 			// Add item to map.
 			m.Set(id, i)
 
@@ -373,8 +373,8 @@ func TestConcurrent(t *testing.T) {
 func TestJsonMarshal(t *testing.T) {
 	expected := "{\"1\":1,\"2\":2}"
 	m := NewN(2)
-	m.Set(1, 1)
-	m.Set(2, 2)
+	m.Set(Int64Key(1), 1)
+	m.Set(Int64Key(2), 2)
 	j, err := json.Marshal(m)
 	if err != nil {
 		t.Error(err)
@@ -391,7 +391,7 @@ func TestKeys(t *testing.T) {
 
 	// Insert 100 elements.
 	for i := 0; i < 100; i++ {
-		id := int64(i)
+		id := Int64Key(i)
 		m.Set(id, Animal{id})
 	}
 
@@ -402,9 +402,9 @@ func TestKeys(t *testing.T) {
 }
 
 func TestMInsert(t *testing.T) {
-	animals := map[int64]interface{}{
-		111: Animal{111},
-		222: Animal{222},
+	animals := map[KeyType]interface{}{
+		Int64Key(111): Animal{Int64Key(111)},
+		Int64Key(222): Animal{Int64Key(222)},
 	}
 	m := New()
 	m.MSet(animals)
@@ -415,10 +415,10 @@ func TestMInsert(t *testing.T) {
 }
 
 func TestUpsert(t *testing.T) {
-	dolphin := Animal{444}
-	whale := Animal{555}
-	tiger := Animal{666}
-	lion := Animal{777}
+	dolphin := Animal{Int64Key(444)}
+	whale := Animal{Int64Key(555)}
+	tiger := Animal{Int64Key(666)}
+	lion := Animal{Int64Key(777)}
 
 	cb := func(exists bool, valueInMap interface{}, newValue interface{}) interface{} {
 		nv := newValue.(Animal)
@@ -430,10 +430,10 @@ func TestUpsert(t *testing.T) {
 	}
 
 	m := New()
-	m.Set(888, []Animal{dolphin})
-	m.Upsert(888, whale, cb)
-	m.Upsert(999, tiger, cb)
-	m.Upsert(999, lion, cb)
+	m.Set(Int64Key(888), []Animal{dolphin})
+	m.Upsert(Int64Key(888), whale, cb)
+	m.Upsert(Int64Key(999), tiger, cb)
+	m.Upsert(Int64Key(999), lion, cb)
 
 	if m.Count() != 2 {
 		t.Error("map should contain exactly two elements.")
@@ -456,12 +456,65 @@ func TestUpsert(t *testing.T) {
 		return true
 	}
 
-	marineAnimals, ok := m.Get(888)
+	marineAnimals, ok := m.Get(Int64Key(888))
 	if !ok || !compare(marineAnimals.([]Animal), []Animal{dolphin, whale}) {
 		t.Error("Set, then Upsert failed")
 	}
 
-	predators, ok := m.Get(999)
+	predators, ok := m.Get(Int64Key(999))
+	if !ok || !compare(predators.([]Animal), []Animal{tiger, lion}) {
+		t.Error("Upsert, then Upsert failed")
+	}
+}
+
+func TestUpsertStringKey(t *testing.T) {
+	dolphin := Animal{StringKey("dolphin")}
+	whale := Animal{StringKey("whale")}
+	tiger := Animal{StringKey("tiger")}
+	lion := Animal{StringKey("lion")}
+
+	cb := func(exists bool, valueInMap interface{}, newValue interface{}) interface{} {
+		nv := newValue.(Animal)
+		if !exists {
+			return []Animal{nv}
+		}
+		res := valueInMap.([]Animal)
+		return append(res, nv)
+	}
+
+	m := New()
+	m.Set(StringKey("marine"), []Animal{dolphin})
+	m.Upsert(StringKey("marine"), whale, cb)
+	m.Upsert(StringKey("predator"), tiger, cb)
+	m.Upsert(StringKey("predator"), lion, cb)
+
+	if m.Count() != 2 {
+		t.Error("map should contain exactly two elements.")
+	}
+
+	compare := func(a, b []Animal) bool {
+		if a == nil || b == nil {
+			return false
+		}
+
+		if len(a) != len(b) {
+			return false
+		}
+
+		for i, v := range a {
+			if v != b[i] {
+				return false
+			}
+		}
+		return true
+	}
+
+	marineAnimals, ok := m.Get(StringKey("marine"))
+	if !ok || !compare(marineAnimals.([]Animal), []Animal{dolphin, whale}) {
+		t.Error("Set, then Upsert failed")
+	}
+
+	predators, ok := m.Get(StringKey("predator"))
 	if !ok || !compare(predators.([]Animal), []Animal{tiger, lion}) {
 		t.Error("Upsert, then Upsert failed")
 	}

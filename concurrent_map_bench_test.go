@@ -7,7 +7,7 @@ func BenchmarkItems(b *testing.B) {
 
 	// Insert 100 elements.
 	for i := 0; i < 10000; i++ {
-		id := int64(i)
+		id := Int64Key(i)
 		m.Set(id, Animal{id})
 	}
 	for i := 0; i < b.N; i++ {
@@ -20,7 +20,7 @@ func BenchmarkMarshalJson(b *testing.B) {
 
 	// Insert 100 elements.
 	for i := 0; i < 10000; i++ {
-		id := int64(i)
+		id := Int64Key(i)
 		m.Set(id, Animal{id})
 	}
 	for i := 0; i < b.N; i++ {
@@ -32,17 +32,17 @@ func BenchmarkSingleInsertAbsent(b *testing.B) {
 	m := New()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		id := int64(i)
+		id := Int64Key(i)
 		m.Set(id, "value")
 	}
 }
 
 func BenchmarkSingleInsertPresent(b *testing.B) {
 	m := New()
-	m.Set(111, "value")
+	m.Set(Int64Key(111), "value")
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		m.Set(111, "value")
+		m.Set(Int64Key(111), "value")
 	}
 }
 
@@ -52,7 +52,7 @@ func benchmarkMultiInsertDifferent(b *testing.B, shardsCount int) {
 	_, set := GetSet(m, finished)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		id := int64(i)
+		id := Int64Key(i)
 		set(id, "value")
 	}
 	for i := 0; i < b.N; i++ {
@@ -77,10 +77,10 @@ func BenchmarkMultiInsertSame(b *testing.B) {
 	m := New()
 	finished := make(chan struct{}, b.N)
 	_, set := GetSet(m, finished)
-	m.Set(111, "value")
+	m.Set(Int64Key(111), "value")
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		set(111, "value")
+		set(Int64Key(111), "value")
 	}
 	for i := 0; i < b.N; i++ {
 		<-finished
@@ -91,10 +91,10 @@ func BenchmarkMultiGetSame(b *testing.B) {
 	m := New()
 	finished := make(chan struct{}, b.N)
 	get, _ := GetSet(m, finished)
-	m.Set(111, "value")
+	m.Set(Int64Key(111), "value")
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		get(111, "value")
+		get(Int64Key(111), "value")
 	}
 	for i := 0; i < b.N; i++ {
 		<-finished
@@ -105,10 +105,10 @@ func benchmarkMultiGetSetDifferent(b *testing.B, shardsCount int) {
 	m := NewN(shardsCount)
 	finished := make(chan struct{}, 2*b.N)
 	get, set := GetSet(m, finished)
-	m.Set(0, "value")
+	m.Set(Int64Key(0), "value")
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		id := int64(i)
+		id := Int64Key(i)
 		set(id, "value")
 		get(id+1, "value")
 	}
@@ -135,12 +135,12 @@ func benchmarkMultiGetSetBlock(b *testing.B, shardsCount int) {
 	finished := make(chan struct{}, 2*b.N)
 	get, set := GetSet(m, finished)
 	for i := 0; i < b.N; i++ {
-		id := int64(i)
+		id := Int64Key(i)
 		m.Set(id%100, "value")
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		id := int64(i)
+		id := Int64Key(i)
 		set(id%100, "value")
 		get(id%100, "value")
 	}
@@ -162,13 +162,13 @@ func BenchmarkMultiGetSetBlock_256_Shard(b *testing.B) {
 	benchmarkMultiGetSetBlock(b, 256)
 }
 
-func GetSet(m *ConcurrentMap, finished chan struct{}) (set func(key int64, value string), get func(key int64, value string)) {
-	return func(key int64, value string) {
+func GetSet(m *ConcurrentMap, finished chan struct{}) (set func(key KeyType, value string), get func(key KeyType, value string)) {
+	return func(key KeyType, value string) {
 			for i := 0; i < 10; i++ {
 				m.Get(key)
 			}
 			finished <- struct{}{}
-		}, func(key int64, value string) {
+		}, func(key KeyType, value string) {
 			for i := 0; i < 10; i++ {
 				m.Set(key, value)
 			}
@@ -181,7 +181,7 @@ func BenchmarkKeys(b *testing.B) {
 
 	// Insert 100 elements.
 	for i := 0; i < 10000; i++ {
-		id := int64(i)
+		id := Int64Key(i)
 		m.Set(id, Animal{id})
 	}
 	for i := 0; i < b.N; i++ {
