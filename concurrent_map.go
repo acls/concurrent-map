@@ -11,7 +11,7 @@ type ConcurrentMap struct {
 	shards []*mapShard
 }
 
-// mapShard A "thread" safe any to anything map.
+// mapShard A "thread" safe KeyType to anything map.
 type mapShard struct {
 	items        map[KeyType]interface{}
 	sync.RWMutex // Read Write mutex, guards access to internal map.
@@ -176,50 +176,64 @@ type Tuple struct {
 //
 // Deprecated: using IterBuffered() will get a better performence
 func (m ConcurrentMap) Iter() <-chan Tuple {
+	chans := m.snapshot()
 	ch := make(chan Tuple)
-	go func() {
-		wg := sync.WaitGroup{}
-		wg.Add(len(m.shards))
-		// Foreach shard.
-		for _, shard := range m.shards {
-			go func(shard *mapShard) {
-				// Foreach key, value pair.
-				shard.RLock()
-				for key, val := range shard.items {
-					ch <- Tuple{key, val}
-				}
-				shard.RUnlock()
-				wg.Done()
-			}(shard)
-		}
-		wg.Wait()
-		close(ch)
-	}()
+	go fanIn(chans, ch)
 	return ch
 }
 
 // IterBuffered returns a buffered iterator which could be used in a for range loop.
 func (m *ConcurrentMap) IterBuffered() <-chan Tuple {
-	ch := make(chan Tuple, m.Count())
-	go func() {
-		wg := sync.WaitGroup{}
-		wg.Add(len(m.shards))
-		// Foreach shard.
-		for _, shard := range m.shards {
-			go func(shard *mapShard) {
-				// Foreach key, value pair.
-				shard.RLock()
-				for key, val := range shard.items {
-					ch <- Tuple{key, val}
-				}
-				shard.RUnlock()
-				wg.Done()
-			}(shard)
-		}
-		wg.Wait()
-		close(ch)
-	}()
+	chans := m.snapshot()
+	total := 0
+	for _, c := range chans {
+		total += cap(c)
+	}
+	ch := make(chan Tuple, total)
+	go fanIn(chans, ch)
 	return ch
+}
+
+// snapshot returns a array of channels that contains elements in each shard.
+// It returns once the size of each buffered channel is determined,
+// before all the channels are populated using goroutines.
+func (m *ConcurrentMap) snapshot() (chans []chan Tuple) {
+	shardCount := len(m.shards)
+	chans = make([]chan Tuple, shardCount)
+	wg := sync.WaitGroup{}
+	wg.Add(shardCount)
+	// Foreach shard.
+	for index, shard := range m.shards {
+		go func(index int, shard *mapShard) {
+			// Foreach key, value pair.
+			shard.RLock()
+			chans[index] = make(chan Tuple, len(shard.items))
+			wg.Done()
+			for key, val := range shard.items {
+				chans[index] <- Tuple{key, val}
+			}
+			shard.RUnlock()
+			close(chans[index])
+		}(index, shard)
+	}
+	wg.Wait()
+	return chans
+}
+
+// fanIn reads elements from channels `chans` into channel `out`
+func fanIn(chans []chan Tuple, out chan Tuple) {
+	wg := sync.WaitGroup{}
+	wg.Add(len(chans))
+	for _, ch := range chans {
+		go func(ch chan Tuple) {
+			for t := range ch {
+				out <- t
+			}
+			wg.Done()
+		}(ch)
+	}
+	wg.Wait()
+	close(out)
 }
 
 // Items returns all items as map[KeyType]interface{}
@@ -277,9 +291,9 @@ func (m *ConcurrentMap) Keys() []KeyType {
 	}()
 
 	// Generate keys
-	keys := make([]KeyType, count)
-	for i := 0; i < count; i++ {
-		keys[i] = <-ch
+	keys := make([]KeyType, 0, count)
+	for k := range ch {
+		keys = append(keys, k)
 	}
 	return keys
 }

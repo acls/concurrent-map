@@ -519,3 +519,101 @@ func TestUpsertStringKey(t *testing.T) {
 		t.Error("Upsert, then Upsert failed")
 	}
 }
+
+func TestKeysWhenRemoving(t *testing.T) {
+	m := New()
+
+	// Insert 100 elements.
+	Total := 100
+	for i := 0; i < Total; i++ {
+		key := Int64Key(i + 1)
+		m.Set(key, Animal{key})
+	}
+
+	// Remove 10 elements concurrently.
+	Num := 10
+	for i := 0; i < Num; i++ {
+		go func(c *ConcurrentMap, n int) {
+			c.Remove(Int64Key(n + 1))
+		}(m, i)
+	}
+	keys := m.Keys()
+	for _, k := range keys {
+		n, ok := k.(Int64Key)
+		if !ok {
+			t.Error("Wrong key type returned")
+		}
+		if n == 0 {
+			t.Error("Empty key returned")
+		}
+	}
+}
+
+func TestUndrainedIter(t *testing.T) {
+	testUndrainedIterator(t, false)
+}
+func TestUndrainedIterBuffered(t *testing.T) {
+	testUndrainedIterator(t, true)
+}
+func testUndrainedIterator(t *testing.T, buffered bool) {
+	m := New()
+
+	// Insert 100 elements
+	Total := 100
+	for i := 0; i < Total; i++ {
+		key := Int64Key(i + 1)
+		m.Set(key, Animal{key})
+	}
+
+	// Iterate over some elements
+	counter := 0
+	var ch <-chan Tuple
+	if buffered {
+		ch = m.IterBuffered()
+	} else {
+		ch = m.Iter()
+	}
+	for item := range ch {
+		if item.Val == nil {
+			t.Error("Expected an object.")
+		}
+		counter++
+		if counter == 42 {
+			break
+		}
+	}
+
+	// Insert 100 more elements
+	for i := Total; i < 2*Total; i++ {
+		key := Int64Key(i + 1)
+		m.Set(key, Animal{key})
+	}
+
+	// Finish previous iteration over 100 elements
+	for item := range ch {
+		if item.Val == nil {
+			t.Error("Expected an object.")
+		}
+		counter++
+	}
+	if counter != Total {
+		t.Error("We should have been right where we stopped")
+	}
+
+	// Iterate over all elements
+	counter = 0
+	if buffered {
+		ch = m.IterBuffered()
+	} else {
+		ch = m.Iter()
+	}
+	for item := range ch {
+		if item.Val == nil {
+			t.Error("Expected an object.")
+		}
+		counter++
+	}
+	if counter != 2*Total {
+		t.Error("We should have counted 200 elements.")
+	}
+}
