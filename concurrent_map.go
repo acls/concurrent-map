@@ -102,13 +102,13 @@ type Miss func(key KeyType) (interface{}, error)
 func (m *ConcurrentMap) MustGet(key KeyType, load Miss) (val interface{}, err error) {
 	// Get shard
 	shard := m.getShard(key)
-	shard.RLock()
+	shard.Lock()
 	// Get item from shard.
 	val, ok := shard.items[key]
 	if ok {
-		shard.RUnlock()
+		shard.Unlock()
 	} else {
-		defer shard.RUnlock() // use defer in case `load` panics
+		defer shard.Unlock() // use defer in case `load` panics
 		if val, err = load(key); err != nil {
 			val = nil
 		} else {
